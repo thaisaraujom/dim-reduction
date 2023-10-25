@@ -11,6 +11,7 @@ This project focuses on the visualization of word embeddings using the Google Ne
    - matplotlib
    - gensim
    - numpy
+   - plotly
 
 You can find the complete list of requirements in the `requirements.txt` file.
 

@@ -4,6 +4,7 @@ from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import gensim.downloader as api
 import numpy as np
+import plotly.express as px
 
 def display_intro() -> None:
     """Display a brief introduction to the app."""
@@ -42,78 +43,81 @@ def get_word_vectors(model, word_list) -> tuple:
 
 def plot_pca(reduced_vecs, filtered_word_list, num_pca_components) -> object:
     """
-    Plot the PCA visualization.
+    Plot the PCA visualization using Plotly.
     
     Args:
         reduced_vecs (numpy.ndarray): The reduced vectors.
         filtered_word_list (list): The filtered word list.
-        num_pca_components (int): The number of PCA components.
+        num_pca_components (int): The number of PCA components (2 or 3).
     
     Returns:
-        object: The PCA visualization.
+        object: The PCA visualization (Plotly figure).
     """
-    plt.style.use('seaborn-whitegrid')
     fig_pca = None
 
     if num_pca_components == 2:
-        fig_pca, ax_pca = plt.subplots(figsize=(10, 6))
-        ax_pca.scatter(reduced_vecs[:, 0], reduced_vecs[:, 1], color='orange', alpha=0.6)
-        for i, word in enumerate(filtered_word_list):
-            ax_pca.annotate(word, (reduced_vecs[i, 0], reduced_vecs[i, 1]), fontsize=10, ha='right')
-        ax_pca.spines["top"].set_visible(False)
-        ax_pca.spines["right"].set_visible(False)
-        ax_pca.grid(color='lightgray', linestyle='--', linewidth=0.5)
-        fig_pca.suptitle('PCA visualization of word embeddings', fontsize=14, fontweight='bold')
+        fig_pca = px.scatter(x=reduced_vecs[:, 0], y=reduced_vecs[:, 1], text=filtered_word_list, 
+                             labels={'x': 'PCA Component 1', 'y': 'PCA Component 2'}, 
+                             title='PCA visualization of word embeddings',
+                             width=800, height=600)
+        fig_pca.update_traces(marker=dict(color='orange', opacity=0.6, size=12),
+                              selector=dict(mode='markers+text'))
+        fig_pca.update_layout(paper_bgcolor='rgba(0,0,0,0)', 
+                      plot_bgcolor='rgba(0,0,0,0)', 
+                      font=dict(family='Arial, sans-serif', size=14, color='DarkSlateGrey'),
+                      margin=dict(l=40, r=40, b=40, t=40))  
 
+        for trace in fig_pca.data:
+            trace.textposition = 'top center'
+            trace.textfont.size = 10
+        
     elif num_pca_components == 3:
-        fig_pca = plt.figure(figsize=(10, 6))
-        ax_pca = fig_pca.add_subplot(111, projection='3d')
-        ax_pca.scatter(reduced_vecs[:, 0], reduced_vecs[:, 1], reduced_vecs[:, 2], color='orange', alpha=0.6, s=50)
-        for i, word in enumerate(filtered_word_list):
-            ax_pca.text(reduced_vecs[i, 0], reduced_vecs[i, 1], reduced_vecs[i, 2], word, fontsize=10, ha='right')
-
-        # Define the background color of the plot to white
-        ax_pca.set_facecolor('white')
-
-        # Colors and styles
-        ax_pca.w_xaxis.pane.set_edgecolor('lightgrey')
-        ax_pca.w_yaxis.pane.set_edgecolor('lightgrey')
-        ax_pca.w_zaxis.pane.set_edgecolor('lightgrey')
-        ax_pca.w_xaxis.line.set_color('lightgrey')
-        ax_pca.w_yaxis.line.set_color('lightgrey')
-        ax_pca.w_zaxis.line.set_color('lightgrey')
-
-        # Grid lines
-        ax_pca.xaxis._axinfo["grid"]['color'] =  (0.8, 0.8, 0.8, 0.3)
-        ax_pca.yaxis._axinfo["grid"]['color'] =  (0.8, 0.8, 0.8, 0.3)
-        ax_pca.zaxis._axinfo["grid"]['color'] =  (0.8, 0.8, 0.8, 0.3)
-
-        # Define the color of the axis labels
-        ax_pca.tick_params(axis='both', which='major', colors='grey')
-        fig_pca.suptitle('PCA visualization of word embeddings', fontsize=14, fontweight='bold')
-
+        fig_pca = go.Figure(data=[go.Scatter3d(x=reduced_vecs[:, 0], y=reduced_vecs[:, 1], z=reduced_vecs[:, 2], 
+                                               mode='markers+text', text=filtered_word_list,
+                                               marker=dict(color='orange', size=12, opacity=0.6))])
+        fig_pca.update_layout(scene=dict(xaxis_title='PCA Component 1',
+                                         yaxis_title='PCA Component 2',
+                                         zaxis_title='PCA Component 3'),
+                              width=800, height=600,
+                              title='PCA visualization of word embeddings')
+        for trace in fig_pca.data:
+            trace.textposition = 'top center'
+            trace.textfont.size = 10
+        
     return fig_pca
 
-def plot_tsne(embedding_2d, filtered_word_list) -> object:
+def plot_tsne(embedding_2d, filtered_word_list, text_offset=0.1) -> object:
     """
-    Plot the t-SNE visualization.
+    Plot the t-SNE visualization using Plotly with improved visual style.
     
     Args:
         embedding_2d (numpy.ndarray): The 2D embedding.
         filtered_word_list (list): The filtered word list.
+        text_offset (float): Vertical offset for text labels.
     
     Returns:
         object: The t-SNE visualization.
     """
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.scatter(embedding_2d[:, 0], embedding_2d[:, 1], color='blue', alpha=0.6)
-    for i, word in enumerate(filtered_word_list):
-        ax.annotate(word, (embedding_2d[i, 0], embedding_2d[i, 1]), fontsize=10, ha='right')
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.grid(color='lightgray', linestyle='--', linewidth=0.5)
-    fig.suptitle('t-SNE visualization of word embeddings', fontsize=14, fontweight='bold')
+    fig = px.scatter(x=embedding_2d[:, 0], y=embedding_2d[:, 1], text=filtered_word_list,
+                     labels={'x': 'Dimension 1', 'y': 'Dimension 2'},
+                     title='t-SNE visualization of word embeddings',
+                     opacity=0.7,
+                     width=800, height=600)
+    
+    fig.update_traces(marker=dict(color='green', opacity=0.6, size=14),
+                              selector=dict(mode='markers+text'))
+    
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', 
+                      plot_bgcolor='rgba(0,0,0,0)',  
+                      font=dict(family='Arial, sans-serif', size=12, color='DarkSlateGrey'),
+                      margin=dict(l=40, r=40, b=40, t=40)) 
+    
+    for trace in fig.data:
+        trace.textposition = 'top center'
+        trace.textfont.size = 10
+    
     return fig
+
 
 def main():
     """Main function of the app."""
@@ -177,13 +181,15 @@ def main():
 
                         if show_pca:
                             fig_pca = plot_pca(reduced_vecs, filtered_word_list, num_pca_components)
-                            st.pyplot(fig_pca)
+                            #st.pyplot(fig_pca)
+                            st.plotly_chart(fig_pca)
 
                         # t-SNE
                         tsne = TSNE(n_components=2, perplexity=min(perplexity_value, len(filtered_word_list)-1), random_state=42)
                         embedding_2d = tsne.fit_transform(reduced_vecs)
                         fig_tsne = plot_tsne(embedding_2d, filtered_word_list)
-                        st.pyplot(fig_tsne)
+                        #st.pyplot(fig_tsne)
+                        st.plotly_chart(fig_tsne)
                     else:
                         st.warning("⚠️ None of the entered words are in the model's vocabulary.")
             except Exception as error_msg:
