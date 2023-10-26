@@ -2,6 +2,8 @@
 
 This project focuses on the visualization of word embeddings using the Google News' word2vec model with 300 dimensions. Built with Streamlit, the web application demonstrates the technique of dimensionality reduction using PCA and t-SNE. Upon executing the code, users can input words and visualize their reduced embeddings in 2D or 3D plots.
 
+[video](https://github.com/thaisaraujom/dim-reduction/assets/56180384/8811a893-49f7-4ca7-b2a9-26eb4654807b)
+
 ## 🔧 Requirements/Technologies
 
 - Python 3.8+
