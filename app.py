@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import gensim.downloader as api
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
 
 def display_intro() -> None:
     """Display a brief introduction to the app."""
@@ -64,7 +65,7 @@ def plot_pca(reduced_vecs, filtered_word_list, num_pca_components) -> object:
                               selector=dict(mode='markers+text'))
         fig_pca.update_layout(paper_bgcolor='rgba(0,0,0,0)', 
                       plot_bgcolor='rgba(0,0,0,0)', 
-                      font=dict(family='Arial, sans-serif', size=14, color='DarkSlateGrey'),
+                      font=dict(family='Arial, sans-serif', size=14),
                       margin=dict(l=40, r=40, b=40, t=40))  
 
         for trace in fig_pca.data:
@@ -104,12 +105,12 @@ def plot_tsne(embedding_2d, filtered_word_list, text_offset=0.1) -> object:
                      opacity=0.7,
                      width=800, height=600)
     
-    fig.update_traces(marker=dict(color='green', opacity=0.6, size=14),
+    fig.update_traces(marker=dict(color='blue', opacity=0.6, size=14),
                               selector=dict(mode='markers+text'))
     
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', 
                       plot_bgcolor='rgba(0,0,0,0)',  
-                      font=dict(family='Arial, sans-serif', size=12, color='DarkSlateGrey'),
+                      font=dict(family='Arial, sans-serif', size=12),
                       margin=dict(l=40, r=40, b=40, t=40)) 
     
     for trace in fig.data:
