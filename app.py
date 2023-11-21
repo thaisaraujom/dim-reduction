@@ -6,6 +6,7 @@ import gensim.downloader as api
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from sklearn.cluster import OPTICS
 
 def display_intro() -> None:
     """Display a brief introduction to the app."""
@@ -119,6 +120,43 @@ def plot_tsne(embedding_2d, filtered_word_list, text_offset=0.1) -> object:
     
     return fig
 
+def perform_optics_clustering(embeddings, min_samples=2):
+    """
+    Perform OPTICS clustering on the embeddings.
+    
+    Args:
+        embeddings (numpy.ndarray): The word embeddings.
+    
+    Returns:
+        numpy.ndarray: The cluster labels.
+    """
+    optics_model = OPTICS(min_samples=min_samples, xi=0.05, min_cluster_size=0.1)
+    labels = optics_model.fit_predict(embeddings)
+    return labels
+
+def plot_optics(embedding_2d, labels, filtered_word_list):
+    """
+    Plot the results of OPTICS clustering using Plotly.
+    
+    Args:
+        embedding_2d (numpy.ndarray): The 2D embeddings (after PCA/t-SNE).
+        labels (numpy.ndarray): The cluster labels from OPTICS.
+        filtered_word_list (list): The filtered list of words.
+        
+    Returns:
+        object: The Plotly figure for OPTICS clustering visualization.
+    """
+    fig = px.scatter(x=embedding_2d[:, 0], y=embedding_2d[:, 1], text=filtered_word_list,
+                     color=labels, labels={'x': 'Dimension 1', 'y': 'Dimension 2'},
+                     title='OPTICS Clustering of Word Embeddings', width=800, height=600)
+    
+    fig.update_traces(marker=dict(opacity=0.8, size=10),
+                      selector=dict(mode='markers+text'))
+    
+    fig.update_layout(margin=dict(l=40, r=40, b=40, t=40),
+                      font=dict(family='Arial, sans-serif', size=12))
+    
+    return fig
 
 def main():
     """Main function of the app."""
@@ -126,18 +164,25 @@ def main():
 
     model = load_model()
 
+    # Inicialization of the session state variables
+    if 'show_pca' not in st.session_state:
+        st.session_state['show_pca'] = False
+    if 'show_tsne' not in st.session_state:
+        st.session_state['show_tsne'] = False
+    if 'show_optics' not in st.session_state:
+        st.session_state['show_optics'] = False
+
     # Input the words
     words = st.text_input("Enter words (separated by commas): 📝")
 
-    # Verify if the user has entered any words
-    if words:  
+    if words:
         word_list = [word.strip() for word in words.split(",")]
         word_vecs, filtered_word_list = get_word_vectors(model, word_list)
 
         if word_vecs:
             word_vecs_array = np.array(word_vecs)
             
-            # Verify if we have enough words to perform PCA
+            # Verify if there are enough words to perform PCA
             max_components = min(len(filtered_word_list), word_vecs_array.shape[1])
             if max_components > 2:
                 num_pca_components = st.slider("Number of components for PCA:", 2, max_components, 2)
@@ -145,56 +190,51 @@ def main():
                 st.warning("There are not enough components to perform PCA.")
                 return
             
-            # Adittional settings
-            st.write("### Advanced settings")
-            
             # Define the max and min values for perplexity
             min_perplexity = 2
             max_perplexity = max(5, len(filtered_word_list) - 1)
 
-            # Verify if there are enough words to adjust the perplexity
+            # Certify that there are enough words to adjust the perplexity
             if max_perplexity > min_perplexity:
-                # Certify if the default value is within the range
                 default_perplexity = min(30, max_perplexity)
                 perplexity_value = st.slider("Perplexity for t-SNE:", min_perplexity, max_perplexity, default_perplexity)
             else:
                 st.warning("There are not enough words to adjust the t-SNE perplexity.")
                 return
     
-            # Verify if the user wants to show the PCA visualization
-            if num_pca_components > 3:
-                show_pca = False
-            else:
-                show_pca = st.checkbox("Show PCA visualization before t-SNE?", True)
+            # Processing and plotting
+            if st.button("Process"):
+                st.session_state['show_pca'] = True
+                st.session_state['show_tsne'] = True
+                st.session_state['show_optics'] = False
+
+            if st.session_state['show_pca']:
+                pca = PCA(n_components=num_pca_components)
+                reduced_vecs = pca.fit_transform(word_vecs_array)
+                st.info(f"Explained variance by {num_pca_components} components: {sum(pca.explained_variance_ratio_):.2%}")
+                if num_pca_components == 2 or num_pca_components == 3:
+                    fig_pca = plot_pca(reduced_vecs, filtered_word_list, num_pca_components)
+                    st.plotly_chart(fig_pca)
+    
+            if st.session_state['show_tsne']:
+                tsne = TSNE(n_components=2, perplexity=perplexity_value, random_state=42)
+                embedding_2d = tsne.fit_transform(reduced_vecs)
+                fig_tsne = plot_tsne(embedding_2d, filtered_word_list)
+                st.plotly_chart(fig_tsne)
+
+            if st.session_state['show_tsne'] and st.session_state['show_pca']:
+                max_samples = len(word_vecs_array)
+                min_samples = st.slider('Min Samples for OPTICS', 2, max(max_samples // 2, 2), 2)
+                if st.button("Cluster with OPTICS"):
+                    st.session_state['show_optics'] = True
+
+            if st.session_state['show_optics']:
+                with st.spinner('Performing OPTICS clustering...'):
+                    labels = perform_optics_clustering(embedding_2d, min_samples)
+                    fig_optics = plot_optics(embedding_2d, labels, filtered_word_list)
+                    st.plotly_chart(fig_optics)
         else:
             st.warning("⚠️ None of the entered words are in the model's vocabulary.")
-
-        if st.button("Process"):
-            try:
-                with st.spinner('Processing...'):
-                    if word_vecs:
-                        word_vecs_array = np.array(word_vecs)
-
-                        # PCA
-                        pca = PCA(n_components=num_pca_components)
-                        reduced_vecs = pca.fit_transform(word_vecs_array)
-                        st.write(f"Explained variance: {sum(pca.explained_variance_ratio_):.2%}")
-
-                        if show_pca:
-                            fig_pca = plot_pca(reduced_vecs, filtered_word_list, num_pca_components)
-                            #st.pyplot(fig_pca)
-                            st.plotly_chart(fig_pca)
-
-                        # t-SNE
-                        tsne = TSNE(n_components=2, perplexity=min(perplexity_value, len(filtered_word_list)-1), random_state=42)
-                        embedding_2d = tsne.fit_transform(reduced_vecs)
-                        fig_tsne = plot_tsne(embedding_2d, filtered_word_list)
-                        #st.pyplot(fig_tsne)
-                        st.plotly_chart(fig_tsne)
-                    else:
-                        st.warning("⚠️ None of the entered words are in the model's vocabulary.")
-            except Exception as error_msg:
-                st.error(f"🔴 An error occurred: {str(error_msg)}")
     else:
         st.write("Please enter some words to begin.")
 
