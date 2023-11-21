@@ -13,10 +13,11 @@ def display_intro() -> None:
     st.title('Word Embeddings Visualization 📊')
     st.write("""
              In this application, we utilize embeddings from the Google News word2vec model with 300 dimensions 
-             to demonstrate dimensionality reduction 
-             using PCA and t-SNE. Dimensionality reduction is an 
-             important technique for visualizing high-dimensional data in a two or 
-             three-dimensional space.
+             to demonstrate dimensionality reduction using PCA and t-SNE, as well as data clustering with the OPTICS algorithm. 
+             Dimensionality reduction is an important technique for visualizing high-dimensional data in a two or 
+             three-dimensional space. Similarly, OPTICS clustering helps to identify the structure of data points 
+             in this reduced dimensional space, revealing patterns and groupings that can be crucial for understanding 
+             the natural groupings within the data.
             """)
 
 @st.cache_data()
