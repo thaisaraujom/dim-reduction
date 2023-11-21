@@ -7,6 +7,8 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.cluster import OPTICS
+from sklearn.cluster import Birch
+import pandas as pd
 
 def display_intro() -> None:
     """Display a brief introduction to the app."""
@@ -135,6 +137,21 @@ def perform_optics_clustering(embeddings, min_samples=2):
     labels = optics_model.fit_predict(embeddings)
     return labels
 
+def perform_birch_clustering(embeddings, num_cluster):
+    """
+    Perform BIRCH clustering on the embeddings.
+    
+    Args:
+        embeddings (numpy.ndarray): The word embeddings.
+        num_cluster (int): The number of clusters
+    
+    Returns:
+        numpy.ndarray: The cluster labels.
+    """
+    model = Birch(n_clusters=num_cluster)
+    labels = model.fit_predict(embeddings)
+    return labels
+
 def plot_optics(embedding_2d, labels, filtered_word_list):
     """
     Plot the results of OPTICS clustering using Plotly.
@@ -147,8 +164,18 @@ def plot_optics(embedding_2d, labels, filtered_word_list):
     Returns:
         object: The Plotly figure for OPTICS clustering visualization.
     """
-    fig = px.scatter(x=embedding_2d[:, 0], y=embedding_2d[:, 1], text=filtered_word_list,
-                     color=labels, labels={'x': 'Dimension 1', 'y': 'Dimension 2'},
+    dic = {
+        'x': embedding_2d[:, 0],
+        'y': embedding_2d[:, 1],
+        'text': filtered_word_list,
+        'labels': labels,
+    }
+
+    df = pd.DataFrame(dic)
+    df['labels'] = df['labels'].astype(str)
+
+    fig = px.scatter(df, x='x', y='y', text='text',
+                     color='labels', labels={'x': 'Dimension 1', 'y': 'Dimension 2'},
                      title='OPTICS Clustering of Word Embeddings', width=800, height=600)
     
     fig.update_traces(marker=dict(opacity=0.8, size=10),
@@ -156,6 +183,49 @@ def plot_optics(embedding_2d, labels, filtered_word_list):
     
     fig.update_layout(margin=dict(l=40, r=40, b=40, t=40),
                       font=dict(family='Arial, sans-serif', size=12))
+
+    for trace in fig.data:
+        trace.textposition = 'top center'
+        trace.textfont.size = 10
+    
+    return fig
+
+def plot_birch(embedding_2d, labels, filtered_word_list):
+    """
+    Plot the results of OPTICS clustering using Plotly.
+    
+    Args:
+        embedding_2d (numpy.ndarray): The 2D embeddings (after PCA/t-SNE).
+        labels (numpy.ndarray): The cluster labels from OPTICS.
+        filtered_word_list (list): The filtered list of words.
+        
+    Returns:
+        object: The Plotly figure for OPTICS clustering visualization.
+    """
+
+    dic = {
+        'x': embedding_2d[:, 0],
+        'y': embedding_2d[:, 1],
+        'text': filtered_word_list,
+        'labels': labels,
+    }
+
+    df = pd.DataFrame(dic)
+    df['labels'] = df['labels'].astype(str)
+
+    fig = px.scatter(df, x='x', y='y', text='text',
+                     color='labels', labels={'x': 'Dimension 1', 'y': 'Dimension 2'},
+                     title='BIRCH Clustering of Word Embeddings', width=800, height=600)
+    
+    fig.update_traces(marker=dict(opacity=0.8, size=10),
+                      selector=dict(mode='markers+text'))
+    
+    fig.update_layout(margin=dict(l=40, r=40, b=40, t=40),
+                      font=dict(family='Arial, sans-serif', size=12))
+
+    for trace in fig.data:
+        trace.textposition = 'top center'
+        trace.textfont.size = 10
     
     return fig
 
@@ -226,13 +296,18 @@ def main():
             if st.session_state['show_tsne'] and st.session_state['show_pca']:
                 max_samples = len(word_vecs_array)
                 min_samples = st.slider('Min Samples for OPTICS', 2, max(max_samples // 2, 2), 2)
-                if st.button("Cluster with OPTICS"):
+                num_cluster = st.slider('Number of clusters for BIRCH', 2, max_samples)
+                if st.button("Cluster with OPTICS and BIRCH"):
                     st.session_state['show_optics'] = True
 
             if st.session_state['show_optics']:
-                with st.spinner('Performing OPTICS clustering...'):
+                with st.spinner('Performing OPTICS and BIRCH clustering...'):
                     labels = perform_optics_clustering(embedding_2d, min_samples)
                     fig_optics = plot_optics(embedding_2d, labels, filtered_word_list)
+                    st.plotly_chart(fig_optics)
+
+                    labels = perform_birch_clustering(embedding_2d, num_cluster)
+                    fig_optics = plot_birch(embedding_2d, labels, filtered_word_list)
                     st.plotly_chart(fig_optics)
         else:
             st.warning("⚠️ None of the entered words are in the model's vocabulary.")
